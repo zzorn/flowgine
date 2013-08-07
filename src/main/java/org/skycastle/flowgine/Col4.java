@@ -80,11 +80,12 @@ public final class Col4 {
 
     /**
      * Interpolate this color between this and the other color.
-     * @param c color to interpolate towards.
+     *
      * @param amount 0 = this color, 1 = other color.
+     * @param c color to interpolate towards.
      * @return this color
      */
-    public Col4 interpolate(Col4 c, float amount) {
+    public Col4 interpolate(float amount, Col4 c) {
         r += amount * (c.r - r);
         g += amount * (c.g - g);
         b += amount * (c.b - b);

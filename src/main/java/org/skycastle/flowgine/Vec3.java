@@ -273,14 +273,28 @@ public class Vec3 {
 
     /**
      * Interpolate this vector between this and the other vector.
-     * @param v vector to interpolate towards.
+     *
      * @param amount 0 = this vector, 1 = other vector.
+     * @param v vector to interpolate towards.
      * @return this vector
      */
-    public Vec3 interpolate(Vec3 v, float amount) {
+    public Vec3 interpolate(float amount, Vec3 v) {
         x += amount * (v.x - x);
         y += amount * (v.y - y);
         z += amount * (v.z - z);
+        return this;
+    }
+
+    /**
+     * Sets this vector to the linear interpolation between a and b.
+     *
+     * @param amount 0 = a, 1 = b.
+     * @return this vector
+     */
+    public Vec3 setInterpolated(float amount, Vec3 a, Vec3 b) {
+        x = a.x + amount * (b.x - a.x);
+        y = a.y + amount * (b.y - a.y);
+        z = a.z + amount * (b.z - a.z);
         return this;
     }
 

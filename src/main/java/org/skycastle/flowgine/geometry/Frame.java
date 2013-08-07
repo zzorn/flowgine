@@ -231,14 +231,9 @@ public final class Frame {
     public Vec3 interpolateCorners(float uPos, float vPos, Vec3 out) {
         if (out == null) out = new Vec3();
 
-        tempU1.setScaled(1.0f - vPos, u1v1);
-        tempU1.addScaled(vPos, u1v2);
-
-        tempU2.setScaled(1.0f - vPos, u2v1);
-        tempU2.addScaled(vPos, u2v2);
-
-        out.setScaled(1.0f - uPos, tempU1);
-        out.addScaled(uPos, tempU2);
+        tempU1.setInterpolated(vPos, u1v1, u1v2);
+        tempU2.setInterpolated(vPos, u2v1, u2v2);
+        out.setInterpolated(uPos, tempU1, tempU2);
 
         return out;
     }
