@@ -7,6 +7,7 @@ import org.lwjgl.util.vector.Matrix4f;
 import org.skycastle.flowgine.geometry.Col4;
 import org.skycastle.flowgine.geometry.Vec2;
 import org.skycastle.flowgine.geometry.Vec3;
+import org.skycastle.flowgine.utils.Disposable;
 import org.skycastle.flowgine.utils.FileUtils;
 import org.skycastle.flowgine.utils.OpenGLUtils;
 
@@ -30,7 +31,7 @@ import static org.lwjgl.opengl.GL20.*;
  * <p/>
  * To avoid compiling the same shader multiple times for different objects, use ShaderManager.
  */
-public class Shader {
+public class Shader implements Disposable {
 
     private static final int MAX_LOG_LENGTH = 1024 * 8;
     private static final int NAME_BUFFER_SIZE = 1024;
@@ -308,7 +309,7 @@ public class Shader {
     /**
      * Free any resources used by this shader program.
      */
-    public void delete() {
+    public void dispose() {
         // Unbind shader
         glUseProgram(0);
 

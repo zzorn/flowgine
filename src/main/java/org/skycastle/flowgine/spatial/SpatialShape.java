@@ -35,10 +35,10 @@ public class SpatialShape extends AbstractSpatial {
         // One use case is many identical trees or similar, can use same vertex object.  On the other hand, many objects are unique.
 
         // TODO: Load texture(s).  Possibly generate.  Parameters in textureRef.
-        // Same applies as to shape manager above (runtime regenerate and reuploading of texture possible
+        // Same applies as to shape manager above (runtime regenerate and re-uploading of texture possible
 
         // Load the shader (shaders are not generated, so it does not need to support any creation parameters).
-        shader = FlowGine.shaderManager.getShader(shaderRef);
+        shader = FlowGine.shaderManager.get(shaderRef);
 
     }
 
@@ -74,7 +74,7 @@ public class SpatialShape extends AbstractSpatial {
         // TODO: Release textures
 
         // Release shader using shader pool
-        FlowGine.shaderManager.releaseShader(shader);
+        FlowGine.shaderManager.release(shader);
 
     }
 }

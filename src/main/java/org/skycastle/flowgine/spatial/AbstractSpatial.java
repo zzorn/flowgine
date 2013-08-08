@@ -32,7 +32,9 @@ public abstract class AbstractSpatial implements Spatial {
         OpenGLUtils.checkGLError("Rendering spatial " + this);
     }
 
-    public final void delete() {
+
+
+    public final void dispose() {
         if (isCreated) {
             doDelete();
 

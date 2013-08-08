@@ -9,6 +9,7 @@ import org.lwjgl.opengl.GL30;
 import org.skycastle.flowgine.geometry.Col4;
 import org.skycastle.flowgine.geometry.Vec2;
 import org.skycastle.flowgine.geometry.Vec3;
+import org.skycastle.flowgine.utils.Disposable;
 import org.skycastle.flowgine.utils.OpenGLUtils;
 
 import java.nio.FloatBuffer;
@@ -22,7 +23,7 @@ import java.util.Map;
  *
  */
 // TODO: Add vertex buffer handles to this class
-public class Shape {
+public class Shape implements Disposable {
 
     private List<Vec3> positions = new ArrayList<Vec3>();
     private List<Vec3> normals = new ArrayList<Vec3>();
@@ -36,7 +37,6 @@ public class Shape {
 
 
     private Map<String, Float> shaderParameters = new HashMap<String, Float>();
-
 
 
     /**
@@ -159,6 +159,25 @@ public class Shape {
         // TODO: Loop all triangles, calculate normals
     }
 
+    public void begin() {
+        // Bind vertex array and buffer objects
+        // TODO
+    }
+
+    public void render() {
+        begin();
+
+        // Render triangles
+        // TODO
+
+        end();
+    }
+
+    public void end() {
+        // Unbind vertex array and buffer objects
+        // TODO
+    }
+
 
     public int createVertexBufferObject() {
 
@@ -232,4 +251,10 @@ public class Shape {
         return vaoId;
     }
 
+    /**
+     * Free any resources used by the shape.
+     */
+    public void dispose() {
+        // TODO
+    }
 }

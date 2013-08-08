@@ -1,11 +1,13 @@
 package org.skycastle.flowgine.spatial;
 
+import org.skycastle.flowgine.utils.Disposable;
+
 /**
  * Represents a visible 3D object.
  * Has some shape, shaders, textures, etc.
  * Can be rendered and updated, and deleted.
  */
-public interface Spatial {
+public interface Spatial extends Disposable {
 
     /**
      * Called to initialize the object.
@@ -25,9 +27,5 @@ public interface Spatial {
     // TODO: Possibly pass transformation matrix to allow node hierarchy
     public void render();
 
-    /**
-     * Free resources used by the object.
-     */
-    public void delete();
 
 }
