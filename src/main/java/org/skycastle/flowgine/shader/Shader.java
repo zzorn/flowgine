@@ -1,12 +1,14 @@
-package org.skycastle.flowgine.utils;
+package org.skycastle.flowgine.shader;
 
 import org.flowutils.Check;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.util.vector.Matrix3f;
 import org.lwjgl.util.vector.Matrix4f;
-import org.skycastle.flowgine.Col4;
-import org.skycastle.flowgine.Vec2;
-import org.skycastle.flowgine.Vec3;
+import org.skycastle.flowgine.geometry.Col4;
+import org.skycastle.flowgine.geometry.Vec2;
+import org.skycastle.flowgine.geometry.Vec3;
+import org.skycastle.flowgine.utils.FileUtils;
+import org.skycastle.flowgine.utils.OpenGLUtils;
 
 import java.io.File;
 import java.nio.*;
@@ -104,7 +106,11 @@ public class Shader {
         }
 
         // Check for other opengl errors
-        OpenGLUtils.checkGLError("creating shader with vertex shader '"+vertexShaderName+"' and fragment shader '"+fragmentShaderName+"'");
+        OpenGLUtils.checkGLError("creating shader with vertex shader '" +
+                                 vertexShaderName +
+                                 "' and fragment shader '" +
+                                 fragmentShaderName +
+                                 "'");
     }
 
     /**
@@ -255,6 +261,51 @@ public class Shader {
     }
 
     /**
+     * Applies the provided parameters to this shader.
+     * @param shaderParameters parameters to set.  Supported types are Integer, Float, Vec2, Vec3, Col4, and matrixes.
+     * @throws IllegalArgumentException if the types are unsupported or no parameter with a specified name is found.
+     */
+    public void setUniforms(Map<String, Object> shaderParameters) {
+        for (Map.Entry<String, Object> entry : shaderParameters.entrySet()) {
+            final String name = entry.getKey();
+            final Object value = entry.getValue();
+
+            Check.identifier(name, "parameter name");
+            Check.notNull(value, "value for parameter '"+name+"'");
+
+            if (Integer.class.isInstance(value)) {
+                setUniformInt(name, (Integer) value);
+            }
+            else if (Float.class.isInstance(value)) {
+                setUniformFloat(name, (Float) value);
+            }
+            else if (Vec3.class.isInstance(value)) {
+                setUniformVec3(name, (Vec3) value);
+            }
+            else if (Vec2.class.isInstance(value)) {
+                setUniformVec2(name, (Vec2) value);
+            }
+            else if (Matrix4f.class.isInstance(value)) {
+                setUniformMatrix4(name, (Matrix4f) value);
+            }
+            else if (Matrix3f.class.isInstance(value)) {
+                setUniformMatrix3(name, (Matrix3f) value);
+            }
+            else {
+                throw new IllegalArgumentException("Unsupported type '"+value.getClass()+"' for parameter '"+name+"'");
+            }
+        }
+    }
+
+
+    /**
+     * @return true if a parameter with the specified name exists in this shader.
+     */
+    public boolean hasUniform(String name) {
+        return uniformLocations.containsKey(name);
+    }
+
+    /**
      * Free any resources used by this shader program.
      */
     public void delete() {
@@ -265,13 +316,6 @@ public class Shader {
         glDeleteShader(vertexShaderHandle);
         glDeleteShader(fragmentShaderHandle);
         glDeleteProgram(shaderProgramHandle);
-    }
-
-    /**
-     * @return true if a parameter with the specified name exists in this shader.
-     */
-    public boolean hasUniform(String name) {
-        return uniformLocations.containsKey(name);
     }
 
     /**

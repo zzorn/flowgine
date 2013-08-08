@@ -1,11 +1,13 @@
 package org.skycastle.flowgine.spatial;
 
-import org.skycastle.flowgine.Generator;
-import org.skycastle.flowgine.Shape;
-import org.skycastle.flowgine.utils.Shader;
+import org.skycastle.flowgine.FlowGine;
+import org.skycastle.flowgine.shape.Shape;
+import org.skycastle.flowgine.shader.Shader;
+import org.skycastle.flowgine.shader.ShaderRef;
+import org.skycastle.flowgine.texture.Texture;
 
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -13,38 +15,66 @@ import java.util.Map;
  */
 public class SpatialShape extends AbstractSpatial {
 
-    private final Generator generator;
-    private Map<String, Float> generatorParameters = new LinkedHashMap<String, Float>();
-    private Shape shape = new Shape();
-    private Shader shader;
+    //private Map<String, Object> shapeParameters = new HashMap<String, Object>();
+    private Map<String, Object> shaderParameters = new HashMap<String, Object>();
 
-    public SpatialShape(Generator generator, Map<String, Float> parameters) {
-        this.generator = generator;
-        this.generatorParameters.putAll(parameters);
-    }
+    private String shapeRef; // Contains shape params
+    private ShaderRef shaderRef;
+    private List<String> textureRefs;  // Contains texture params
+
+    private Shape shape;
+    private Shader shader;
+    private List<Texture> textures;
+
 
     @Override protected void doCreate() {
-        //shaderName = generator.generateShape(generatorParameters, shape, shaderParameters);
-        // TODO: Also get & load texture(s)
-        // TODO: Load shader using shader pool
+
+        // TODO: Load (and possibly generate) shape - pass parameters to shape manager in shapeRef
+        // Parameters could be in the shapeRef.  Parameters could be applied later as well and the shape re-generated, although it will
+        // affect all users of the same shapeRef.  Maybe have a getUniqueShape method.
+        // One use case is many identical trees or similar, can use same vertex object.  On the other hand, many objects are unique.
+
+        // TODO: Load texture(s).  Possibly generate.  Parameters in textureRef.
+        // Same applies as to shape manager above (runtime regenerate and reuploading of texture possible
+
+        // Load the shader (shaders are not generated, so it does not need to support any creation parameters).
+        shader = FlowGine.shaderManager.getShader(shaderRef);
+
     }
 
     @Override protected void doUpdate(double deltaSeconds, double gameTimeSeconds) {
-        //shaderName = generator.updateShape(generatorParameters, shape, shaderParameters, shaderName);
 
-        // TODO: Release and rebind shader if necessary - Use shader pool
+        // TODO: Update the shape if it is animated
 
-        // TODO: Update vertex object if changed
+        // TODO: Update the texture if it is animated
+
     }
 
     @Override protected void doRender() {
-        // TODO: Bind VBO and index buffer and textures and shader
+
+        // TODO: Do any projection
+
+        // TODO: Do any instance specific scaling, rotation (and possibly mirroring), to make it easy to reuse the same vertex obj instance (e.g. tree, stone)
+
+        shader.begin();
+        // Apply shader parameters (TODO: Somehow unapply ones that are not specified?)
+        shader.setUniforms(shaderParameters);
+
+        // TODO: Bind textures
+
+        // TODO: Bind VBO and index buffer
+
         // TODO: Render triangles
+
+        shader.end();
     }
 
     @Override protected void doDelete() {
-        // TODO: Unbind shape
+        // TODO: Release shape
         // TODO: Release textures
-        // TODO: Release shader using shader pool
+
+        // Release shader using shader pool
+        FlowGine.shaderManager.releaseShader(shader);
+
     }
 }

@@ -1,9 +1,7 @@
 package org.skycastle.flowgine.geometry;
 
-import org.skycastle.flowgine.Col4;
-import org.skycastle.flowgine.Shape;
-import org.skycastle.flowgine.Vec2;
-import org.skycastle.flowgine.Vec3;
+import org.skycastle.flowgine.shape.Shape;
+import org.skycastle.flowgine.geometry.Vec3;
 
 import java.util.ArrayList;
 import java.util.List;

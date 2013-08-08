@@ -1,4 +1,4 @@
-package org.skycastle.flowgine;
+package org.skycastle.flowgine.geometry;
 
 import org.lwjgl.util.vector.ReadableVector2f;
 import org.lwjgl.util.vector.Vector2f;

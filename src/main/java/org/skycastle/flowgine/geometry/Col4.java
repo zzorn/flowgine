@@ -1,6 +1,4 @@
-package org.skycastle.flowgine;
-
-import org.lwjgl.util.vector.Vector4f;
+package org.skycastle.flowgine.geometry;
 
 import java.nio.FloatBuffer;
 

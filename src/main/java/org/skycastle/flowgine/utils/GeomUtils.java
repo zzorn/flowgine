@@ -1,7 +1,10 @@
-package org.skycastle.flowgine;
+package org.skycastle.flowgine.utils;
 
 import org.lwjgl.util.vector.Matrix4f;
+import org.skycastle.flowgine.geometry.Col4;
+import org.skycastle.flowgine.geometry.Vec3;
 import org.skycastle.flowgine.geometry.Frame;
+import org.skycastle.flowgine.shape.Shape;
 
 /**
  * Utilities for working with 3D geometry.

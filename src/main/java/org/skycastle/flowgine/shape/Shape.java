@@ -1,4 +1,4 @@
-package org.skycastle.flowgine;
+package org.skycastle.flowgine.shape;
 
 import org.flowutils.Check;
 import org.lwjgl.BufferUtils;
@@ -6,6 +6,9 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
+import org.skycastle.flowgine.geometry.Col4;
+import org.skycastle.flowgine.geometry.Vec2;
+import org.skycastle.flowgine.geometry.Vec3;
 import org.skycastle.flowgine.utils.OpenGLUtils;
 
 import java.nio.FloatBuffer;
@@ -18,7 +21,7 @@ import java.util.Map;
 /**
  *
  */
-// TODO: Add texture, shader, buffer ids and render call to this class?
+// TODO: Add vertex buffer handles to this class
 public class Shape {
 
     private List<Vec3> positions = new ArrayList<Vec3>();

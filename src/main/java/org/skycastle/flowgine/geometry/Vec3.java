@@ -1,4 +1,4 @@
-package org.skycastle.flowgine;
+package org.skycastle.flowgine.geometry;
 
 import java.nio.FloatBuffer;
 
