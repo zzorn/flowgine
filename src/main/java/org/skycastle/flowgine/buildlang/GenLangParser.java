@@ -16,10 +16,14 @@ import org.skycastle.flowgine.buildlang.ast.*;
 // It also support numerical expressions and boolean expressions (using and, or, not keywords)
 // It is provided with a list of builtin functions
 // It can work with objects that have methods, but doesn't necessarily support class creating.
-// It support function definition.  Multiple return values could be neat, but not necessary.
+// It supports function definition.
 // It has list and maps, that are mutable
 // When executed, it supports timeout or some other kind of execution counter
 // It produces compiled bytecode, with builtin checks and exception throwing for exceeding the instruction count / time.
+// Allow statements to optionally be separated with semicolons.
+// Possibly allow structs or simple objects.
+// Lambda expressions might be nice.
+
 public class GenLangParser extends BaseParser<Node> {
 
     // Take string as input
@@ -43,19 +47,64 @@ public class GenLangParser extends BaseParser<Node> {
     }
 
     /**
-     * Parses   fun name'(' ([in | out] paramType paramName )* ')'
-     * @return
+     * Parses: fun ResultType functionName ( (paramType paramName [= defaultExpr], )* )  { statement* }
      */
     public Rule functionDef() {
         Var<String> name = new Var<String>();
         return Sequence(
-                CONST, typeName(),
+                FUN, typeName(),
                 identifier(), name.set(match()),
-                ASSIGN, expression(),
-                push(new Const((TypeRef) pop(1), name.get(), (Expr) pop()))
+                LPAR,
+                Optional(
+                        functionParam(),
+                        ZeroOrMore(
+                                COMMA,
+                                functionParam()
+                        )
+                ),
+                RPAR,
+                statementBlock(),
+                push(new Fun( )) // TODO: Add parameters to Fun
         );
     }
 
+    Rule functionParam() {
+        return Sequence(
+                typeName(),
+                identifier(),
+                push(new Param((TypeRef) pop(), match())),
+                Optional(
+                        ASSIGN,
+                        expression(),
+                        push(((Param) pop(1)).setDefaultValue((Expr) pop()))
+                )
+        );
+    }
+
+    Rule statementBlock() {
+        return Sequence(
+                LCURLY,
+                ZeroOrMore(
+                        statement(),
+                        Optional(SEMI)
+                ),
+                RCURLY
+                // TODO: Generate node?
+        );
+    }
+
+    Rule statement() {
+        return expression();
+        // TODO: Generate statement AST node, support other statements
+    }
+
+
+    // TODO: Add variable definition statement
+    // TODO: Add function definition statement
+    // TODO: Add assignment statement
+    // TODO: Add expression statement
+    // TODO: Add for statement (or should for be an expression as well?)
+    // TODO: Add while statement?  Is it needed at all?
 
     public Rule expression() {
         return mathExpression();
@@ -79,6 +128,18 @@ public class GenLangParser extends BaseParser<Node> {
     public Rule factor() {
         return operatorRule(atom(), POWER);
     }
+
+    // TODO: Add function call, either direct or on some object or value (not supported on number or boolean const)
+
+    // TODO: Add object creation
+
+    // TODO: Add list / map creation
+
+    // TODO: Add list/map access (looks like function call?)
+
+    // TODO: Add if expression
+
+    // TODO: Add function expression?  Maybe later
 
     public Rule atom() {
         return FirstOf(number(), parens());
@@ -175,6 +236,7 @@ public class GenLangParser extends BaseParser<Node> {
 
     final Rule COMMA = Terminal(",");
     final Rule COLON = Terminal(":");
+    final Rule SEMI  = Terminal(";");
     final Rule ASSIGN = Terminal("=", Ch('='));
     final Rule EQUAL = Terminal("==");
     final Rule GT = Terminal(">", Ch('='));
