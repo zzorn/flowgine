@@ -6,7 +6,7 @@ import java.util.List;
 /**
  *
  */
-public class Fun  implements Node{
+public class Fun  extends Statement {
 
     private final String name;
     private final TypeRef typeRef;

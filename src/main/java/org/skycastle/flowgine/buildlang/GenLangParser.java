@@ -30,37 +30,59 @@ public class GenLangParser extends BaseParser<Node> {
 
     public Rule program() {
         return Sequence(
-                ZeroOrMore(constantDef()),
+                ZeroOrMore(varDef()),
                 ZeroOrMore(functionDef())
         );
     }
 
 
-    public Rule constantDef() {
-        Var<String> name = new Var<String>();
+    /**
+     * Parses:
+     * [const] type variableName = expression
+     */
+    Rule varDef() {
         return Sequence(
-                CONST, typeName(),
-                identifier(), name.set(match()),
+                push(new VarDef()),
+
+                // Modifiers (const)
+                Optional(
+                        Sequence(
+                                CONST,
+                                ((VarDef) peek()).setConstant(true)
+                        )
+                ),
+
+                // Type
+                typeName(),
+                ((VarDef)peek(1)).setType((TypeRef) pop()),
+
+                // Name
+                identifier(),
+                ((VarDef)peek()).setName(match()),
+
+                // Value
                 ASSIGN, expression(),
-                push(new Const((TypeRef) pop(1), name.get(), (Expr) pop()))
+                ((VarDef)peek(1)).setExpr((Expr) pop())
         );
     }
 
     /**
-     * Parses: fun ResultType functionName ( (paramType paramName [= defaultExpr], )* )  { (statement [;])* }
+     * Parses:
+     * fun ResultType functionName ( (paramType paramName [= defaultExpr], )* )  { = expression | (statement [;])* }
      */
-    public Rule functionDef() {
+    Rule functionDef() {
         Var<String> name = new Var<String>();
         return Sequence(
                 FUN, typeName(),
                 identifier(), name.set(match()),
                 paramSequence(),
                 statementBlock(),
+                // TODO: Support = expression syntax as well, and extract to rule for lambda to reuse
                 push(new Fun(name.get(), (TypeRef) pop(2),  ((Params)pop(1)).getParams(), (Block) pop()))
         );
     }
 
-    public Rule paramSequence() {
+    Rule paramSequence() {
         return Sequence(
                 LPAR,
                 push(new Params()),
@@ -88,6 +110,20 @@ public class GenLangParser extends BaseParser<Node> {
         );
     }
 
+    /**
+     * Parses:
+     * statement[;] | { (statement[;])* }
+     */
+    Rule statements() {
+        return FirstOf(
+                statementBlock(),
+                Sequence(
+                        statement(),
+                        push(new Block((Statement) pop()))
+                )
+        );
+    }
+
     Rule statementBlock() {
         return Sequence(
                 push(new Block()), // Push block, each statement peeks it and adds itself
@@ -103,39 +139,96 @@ public class GenLangParser extends BaseParser<Node> {
 
     Rule statement() {
         return FirstOf(
-                variableDefinition(),
-                expression(),
-                forStatement()
+                varDef(),
+                functionDef(),
+                assignmentStatement(),
+                expressionStatement(),
+                forStatement(),
+                whileStatement()
                 // TODO Add more
         );
     }
 
     /**
-     * Variable definition of the form:
-     * type variableName = expression
+     * Parses:
+     * variableName = expression
      */
-    Rule variableDefinition() {
+    Rule assignmentStatement() {
+        Var<String> name = new Var<String>();
         return Sequence(
-                typeName(),
-                identifier(),
+                identifier(), name.set(match()),
                 ASSIGN,
-                expression()
-                // TODO
+                expression(),
+                push(new Assign(name.get(), (Expr) pop()))
         );
     }
 
+
+    /**
+     * Parses:
+     * expression
+     */
+    Rule expressionStatement() {
+        return Sequence(
+                expression(),
+                push(new ExprStatement((Expr) pop()))
+        );
+    }
+
+    /**
+     * Parses:
+     * for type variableName in (collection | range) do statements
+     */
     Rule forStatement() {
         return null; // TODO: Implement
     }
 
-    // TODO: Add function definition statement
-    // TODO: Add assignment statement
-    // TODO: Add expression statement
-    // TODO: Add for statement (or should for be an expression as well?)
-    // TODO: Add while statement?  Is it needed at all?
+    /**
+     * Parses:
+     * while booleanExpression do statements
+     */
+    Rule whileStatement() {
+        return null; // TODO: Implement
+    }
+
+    /**
+     * Parses:
+     * if booleanExpression do statements [else statements ]
+     */
+    Rule ifExpression() {
+        return null; // TODO: Implement
+    }
 
     public Rule expression() {
-        return mathExpression();
+        return FirstOf(
+                booleanExpr(),
+                map(),
+                list(),
+                mathExpression(),
+                ifExpression(),
+                functionCall(),
+                update(),
+                apply(),
+                create(),
+                lambda()
+        );
+    }
+
+
+    public Rule booleanExpr() {
+        return orExpr();
+    }
+
+    public Rule orExpr() {
+        return operatorRule(andExpr(), OR);
+    }
+
+    public Rule andExpr() {
+        return operatorRule(boolAtom(), AND);
+    }
+
+    public Rule boolAtom() {
+        return null; // TODO: Support NOT, support true false constants, support comparsion ops
     }
 
     public Rule typeName() {
@@ -157,17 +250,78 @@ public class GenLangParser extends BaseParser<Node> {
         return operatorRule(atom(), POWER);
     }
 
-    // TODO: Add function call, either direct or on some object or value (not supported on number or boolean const)
 
-    // TODO: Add object creation
+    /**
+     * Parses:
+     * [ expr, * ]
+     */
+    public Rule list() {
+        return null; // TODO
+    }
 
-    // TODO: Add list / map creation
+    /**
+     * Parses:
+     * [ expr : expr, * ]
+     */
+    // TODO: What parenthesis for map definitions?
+    public Rule map() {
+        return null; // TODO
+    }
 
-    // TODO: Add list/map access (looks like function call?)
+    /**
+     * Used to create iterable range objects for for loops, possibly other things too.
+     * Parses:
+     * [ expr .. expr [step expr] ]
+     */
+    public Rule range() {
+        return null; // TODO
+    }
 
-    // TODO: Add if expression
+    /**
+     * Used for calling a default setter type value for an object.
+     * Translates to a method call object.update(param, value)
+     * Parses:
+     * objectExpression ( expression ) = expression
+     */
+    public Rule update() {
+        return null; // TODO
+    }
 
-    // TODO: Add function expression?  Maybe later
+    /**
+     * Used for calling a default getter type value for an object.
+     * Translates to a method call object.apply(param)
+     * Parses:
+     * objectExpression ( expression )
+     */
+    public Rule apply() {
+        return null; // TODO
+    }
+
+    /**
+     * Parses:
+     * [objectExpression . ] functionName ( [expression, *] [argumentName = expression, *] ) [lambdaExpr]
+     */
+    public Rule functionCall() {
+        return null; // TODO: also extract argument list
+    }
+
+    /**
+     * Creates a new object
+     * Parses:
+     * new type ( argumentList )
+     */
+    public Rule create() {
+        return null; // TODO
+    }
+
+    /**
+     * Creates a new anonymous function with a closure from the current block
+     * Parses:
+     * fun resultType ( paramList ) [= expression | statementBlock ]
+     */
+    public Rule lambda() {
+        return null; // TODO
+    }
 
     public Rule atom() {
         return FirstOf(number(), parens());
