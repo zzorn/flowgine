@@ -47,14 +47,23 @@ public class GenLangParser extends BaseParser<Node> {
     }
 
     /**
-     * Parses: fun ResultType functionName ( (paramType paramName [= defaultExpr], )* )  { statement* }
+     * Parses: fun ResultType functionName ( (paramType paramName [= defaultExpr], )* )  { (statement [;])* }
      */
     public Rule functionDef() {
         Var<String> name = new Var<String>();
         return Sequence(
                 FUN, typeName(),
                 identifier(), name.set(match()),
+                paramSequence(),
+                statementBlock(),
+                push(new Fun(name.get(), (TypeRef) pop(2),  ((Params)pop(1)).getParams(), (Block) pop()))
+        );
+    }
+
+    public Rule paramSequence() {
+        return Sequence(
                 LPAR,
+                push(new Params()),
                 Optional(
                         functionParam(),
                         ZeroOrMore(
@@ -62,9 +71,7 @@ public class GenLangParser extends BaseParser<Node> {
                                 functionParam()
                         )
                 ),
-                RPAR,
-                statementBlock(),
-                push(new Fun( )) // TODO: Add parameters to Fun
+                RPAR
         );
     }
 
@@ -72,34 +79,55 @@ public class GenLangParser extends BaseParser<Node> {
         return Sequence(
                 typeName(),
                 identifier(),
-                push(new Param((TypeRef) pop(), match())),
+                ((Params)peek()).add(new Param((TypeRef) pop(), match())),
                 Optional(
                         ASSIGN,
                         expression(),
-                        push(((Param) pop(1)).setDefaultValue((Expr) pop()))
+                        ((Params) peek()).getLast().setDefaultValue((Expr) pop())
                 )
         );
     }
 
     Rule statementBlock() {
         return Sequence(
+                push(new Block()), // Push block, each statement peeks it and adds itself
                 LCURLY,
                 ZeroOrMore(
                         statement(),
+                        ((Block) peek(1)).addStatement((Statement) pop()),
                         Optional(SEMI)
                 ),
                 RCURLY
-                // TODO: Generate node?
         );
     }
 
     Rule statement() {
-        return expression();
-        // TODO: Generate statement AST node, support other statements
+        return FirstOf(
+                variableDefinition(),
+                expression(),
+                forStatement()
+                // TODO Add more
+        );
     }
 
+    /**
+     * Variable definition of the form:
+     * type variableName = expression
+     */
+    Rule variableDefinition() {
+        return Sequence(
+                typeName(),
+                identifier(),
+                ASSIGN,
+                expression()
+                // TODO
+        );
+    }
 
-    // TODO: Add variable definition statement
+    Rule forStatement() {
+        return null; // TODO: Implement
+    }
+
     // TODO: Add function definition statement
     // TODO: Add assignment statement
     // TODO: Add expression statement

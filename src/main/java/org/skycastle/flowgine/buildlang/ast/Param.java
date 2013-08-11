@@ -17,8 +17,9 @@ public class Param implements Node {
         return defaultValue;
     }
 
-    public Param setDefaultValue(Expr defaultValue) {
+    public boolean setDefaultValue(Expr defaultValue) {
         this.defaultValue = defaultValue;
-        return this;
+
+        return true;
     }
 }
