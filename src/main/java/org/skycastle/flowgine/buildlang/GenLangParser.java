@@ -23,6 +23,7 @@ import org.skycastle.flowgine.buildlang.ast.*;
 // Allow statements to optionally be separated with semicolons.
 // Possibly allow structs or simple objects.
 // Lambda expressions might be nice.
+// annotations can be used for configuring ui elements for parameter entry etc.
 
 public class GenLangParser extends BaseParser<Node> {
 
@@ -30,8 +31,19 @@ public class GenLangParser extends BaseParser<Node> {
 
     public Rule program() {
         return Sequence(
-                ZeroOrMore(varDef()),
-                ZeroOrMore(functionDef())
+                // TODO: Imports
+                push(new Prog()),
+                ZeroOrMore(
+                        varDef(),
+                        Optional(SEMI),
+                        ((Prog)peek(1)).addVar((Var) pop())
+                ),
+                ZeroOrMore(
+                        functionDef(),
+                        Optional(SEMI),
+                        ((Prog)peek(1)).addFun((Fun) pop())
+                )
+                // TODO: Should we have a main body?
         );
     }
 
@@ -53,7 +65,7 @@ public class GenLangParser extends BaseParser<Node> {
                 ),
 
                 // Type
-                typeName(),
+                typeRef(),
                 ((VarDef)peek(1)).setType((TypeRef) pop()),
 
                 // Name
@@ -68,17 +80,31 @@ public class GenLangParser extends BaseParser<Node> {
 
     /**
      * Parses:
-     * fun ResultType functionName ( (paramType paramName [= defaultExpr], )* )  { = expression | (statement [;])* }
+     * fun ResultType functionName ( (paramType paramName [= defaultExpr], )* )  functionBody
      */
     Rule functionDef() {
         Var<String> name = new Var<String>();
         return Sequence(
-                FUN, typeName(),
+                FUN, typeRef(),
                 identifier(), name.set(match()),
                 paramSequence(),
-                statementBlock(),
-                // TODO: Support = expression syntax as well, and extract to rule for lambda to reuse
-                push(new Fun(name.get(), (TypeRef) pop(2),  ((Params)pop(1)).getParams(), (Block) pop()))
+                functionBody(),
+                push(new Fun(name.get(), (TypeRef) pop(2), ((Params) pop(1)).getParams(), (Block) pop()))
+        );
+    }
+
+    /**
+     * Parses:
+     * = expression | { (statement [;])* }
+     */
+    Rule functionBody() {
+        return FirstOf(
+                Sequence(
+                        ASSIGN,
+                        expression(),
+                        push(new Block(new Return((Expr) pop())))
+                ),
+                statementBlock()
         );
     }
 
@@ -99,7 +125,7 @@ public class GenLangParser extends BaseParser<Node> {
 
     Rule functionParam() {
         return Sequence(
-                typeName(),
+                typeRef(),
                 identifier(),
                 ((Params)peek()).add(new Param((TypeRef) pop(), match())),
                 Optional(
@@ -130,22 +156,37 @@ public class GenLangParser extends BaseParser<Node> {
                 LCURLY,
                 ZeroOrMore(
                         statement(),
-                        ((Block) peek(1)).addStatement((Statement) pop()),
-                        Optional(SEMI)
+                        ((Block) peek(1)).addStatement((Statement) pop())
                 ),
                 RCURLY
         );
     }
 
     Rule statement() {
-        return FirstOf(
-                varDef(),
-                functionDef(),
-                assignmentStatement(),
-                expressionStatement(),
-                forStatement(),
-                whileStatement()
-                // TODO Add more
+        return Sequence(
+                FirstOf(
+                        varDef(),
+                        functionDef(),
+                        assignmentStatement(),
+                        expressionStatement(),
+                        forStatement(),
+                        whileStatement(),
+                        returnStatement()
+                        // TODO Add others
+                ),
+                Optional(SEMI)
+        );
+    }
+
+    /**
+     * Parses:
+     * return expression
+     */
+    Rule returnStatement() {
+        return Sequence(
+                RETURN,
+                expression(),
+                push(new Return((Expr) pop()))
         );
     }
 
@@ -177,10 +218,21 @@ public class GenLangParser extends BaseParser<Node> {
 
     /**
      * Parses:
-     * for type variableName in (collection | range) do statements
+     * for type variableName in expr do statements
+     * where expr results in a collection or range or other iterable.
      */
     Rule forStatement() {
-        return null; // TODO: Implement
+        Var<String> name = new Var<String>();
+        return Sequence(
+                FOR,
+                typeRef(),
+                identifier(), name.set(match()),
+                IN,
+                expression(),
+                DO,
+                statements(),
+                push(new For((TypeRef) pop(2), name.get(), (Expr) pop(1), (Block) pop()))
+        );
     }
 
     /**
@@ -188,20 +240,22 @@ public class GenLangParser extends BaseParser<Node> {
      * while booleanExpression do statements
      */
     Rule whileStatement() {
-        return null; // TODO: Implement
+        return Sequence(
+                WHILE,
+                booleanExpr(),
+                DO,
+                statements(),
+                push(new While((BoolExpr) pop(1), (Block) pop()))
+        );
     }
 
     /**
-     * Parses:
-     * if booleanExpression do statements [else statements ]
+     * Parses any expression returning a value.
      */
-    Rule ifExpression() {
-        return null; // TODO: Implement
-    }
-
-    public Rule expression() {
+    Rule expression() {
         return FirstOf(
                 booleanExpr(),
+                range(),
                 map(),
                 list(),
                 mathExpression(),
@@ -210,43 +264,64 @@ public class GenLangParser extends BaseParser<Node> {
                 update(),
                 apply(),
                 create(),
-                lambda()
+                functionExpr()
+                // TODO: Add others
+        );
+    }
+
+    /**
+     * Parses:
+     * if booleanExpression then statements [else statements ]
+     */
+    Rule ifExpression() {
+        return Sequence(
+                IF,
+                booleanExpr(),
+                THEN,
+                statements(),
+                push(new If((BoolExpr) pop(1), (Block) pop())),
+                Optional(
+                        ELSE,
+                        statements(),
+                        ((If) peek()).setElseBlock((Block) pop())
+                )
         );
     }
 
 
-    public Rule booleanExpr() {
+    Rule booleanExpr() {
         return orExpr();
     }
 
-    public Rule orExpr() {
+    Rule orExpr() {
         return operatorRule(andExpr(), OR);
     }
 
-    public Rule andExpr() {
+    Rule andExpr() {
         return operatorRule(boolAtom(), AND);
     }
 
-    public Rule boolAtom() {
+    Rule boolAtom() {
         return null; // TODO: Support NOT, support true false constants, support comparsion ops
     }
 
-    public Rule typeName() {
+    Rule typeRef() {
+        // TODO: Add support for list and map types?
         return Sequence(
                 identifier(),
                 push(new TypeRef(match()))
         );
     }
 
-    public Rule mathExpression() {
+    Rule mathExpression() {
         return operatorRule(term(), FirstOf(PLUS, MINUS));
     }
 
-    public Rule term() {
+    Rule term() {
         return operatorRule(factor(), FirstOf(MUL, DIV));
     }
 
-    public Rule factor() {
+    Rule factor() {
         return operatorRule(atom(), POWER);
     }
 
@@ -255,26 +330,90 @@ public class GenLangParser extends BaseParser<Node> {
      * Parses:
      * [ expr, * ]
      */
-    public Rule list() {
-        return null; // TODO
+    Rule list() {
+        return Sequence(
+                LSQUARE,
+                push(new ListExpr()),
+                Optional(
+                  expression(),
+                  ((ListExpr)peek(1)).add((Expr) pop()),
+                  ZeroOrMore(
+                          COMMA,
+                          expression(),
+                          ((ListExpr)peek(1)).add((Expr) pop())
+                  )
+                ),
+                RSQUARE
+        );
     }
 
     /**
      * Parses:
      * [ expr : expr, * ]
+     * Empty map is coded as [:]
      */
-    // TODO: What parenthesis for map definitions?
-    public Rule map() {
-        return null; // TODO
+    Rule map() {
+        return FirstOf(
+                Sequence(
+                        LSQUARE,
+                        COLON,
+                        RSQUARE,
+                        push(new MapExpr())
+                ),
+                Sequence(
+                        LSQUARE,
+                        push(new MapExpr()),
+                        Optional(
+                                mapEntry(),
+                                ZeroOrMore(
+                                        COMMA,
+                                        mapEntry()
+                                )
+                        ),
+                        RSQUARE
+                ));
     }
 
+    Rule mapEntry() {
+        return Sequence(
+                expression(),
+                COLON,
+                expression(),
+                ((MapExpr)peek(2)).add((Expr) pop(1), (Expr) pop())
+        );
+    }
+
+
     /**
-     * Used to create iterable range objects for for loops, possibly other things too.
+     * Expression used to create iterable range objects for for loops, possibly other things too.
      * Parses:
-     * [ expr .. expr [step expr] ]
+     * [ expr ..|... expr [step expr] ]
+     * .. denotes non inclusive end, ... denotes inclusive end.
      */
     public Rule range() {
-        return null; // TODO
+        Var<Boolean> inclusive = new Var<Boolean>();
+        return Sequence(
+                LSQUARE,
+                expression(),
+                FirstOf(
+                        Sequence(
+                                DOTDOTDOT,
+                                inclusive.set(true)
+                        ),
+                        Sequence(
+                                DOTDOT,
+                                inclusive.set(false)
+                        )
+                ),
+                expression(),
+                push(new RangeExpr((Expr) pop(1), (Expr) pop(), inclusive.get())),
+                Optional(
+                  STEP,
+                  expression(),
+                  ((RangeExpr)peek(1)).setStep((Expr) pop())
+                ),
+                RSQUARE
+        );
     }
 
     /**
@@ -283,8 +422,16 @@ public class GenLangParser extends BaseParser<Node> {
      * Parses:
      * objectExpression ( expression ) = expression
      */
-    public Rule update() {
+    Rule update() {
         return null; // TODO
+    }
+
+    /**
+     * Parses:
+     * [objectExpression . ] functionName ( [expression, *] [argumentName = expression, *] ) [lambdaExpr]
+     */
+    Rule functionCall() {
+        return null; // TODO: also extract argument list
     }
 
     /**
@@ -293,24 +440,16 @@ public class GenLangParser extends BaseParser<Node> {
      * Parses:
      * objectExpression ( expression )
      */
-    public Rule apply() {
+    Rule apply() {
         return null; // TODO
     }
 
     /**
-     * Parses:
-     * [objectExpression . ] functionName ( [expression, *] [argumentName = expression, *] ) [lambdaExpr]
-     */
-    public Rule functionCall() {
-        return null; // TODO: also extract argument list
-    }
-
-    /**
-     * Creates a new object
+     * Creates a new object.  In effect a function call to a constructor.
      * Parses:
      * new type ( argumentList )
      */
-    public Rule create() {
+    Rule create() {
         return null; // TODO
     }
 
@@ -319,19 +458,26 @@ public class GenLangParser extends BaseParser<Node> {
      * Parses:
      * fun resultType ( paramList ) [= expression | statementBlock ]
      */
-    public Rule lambda() {
-        return null; // TODO
+    Rule functionExpr() {
+        return Sequence(
+                FUN, typeRef(),
+                paramSequence(),
+                functionBody(),
+                push(new FunExpr((TypeRef) pop(2), ((Params) pop(1)).getParams(), (Block) pop()))
+        );
     }
 
-    public Rule atom() {
+
+
+    Rule atom() {
         return FirstOf(number(), parens());
     }
 
-    public Rule parens() {
+    Rule parens() {
         return Sequence(LPAR, expression(), RPAR);
     }
 
-    public Rule number() {
+    Rule number() {
         return Sequence(
                 Sequence(
                         Optional(Ch('-')),
@@ -345,7 +491,7 @@ public class GenLangParser extends BaseParser<Node> {
     }
 
 
-    public Rule operatorRule(Rule part, Rule operator) {
+    Rule operatorRule(Rule part, Rule operator) {
         Var<String> op = new Var<String>();
         return Sequence(
                 part,
@@ -357,7 +503,7 @@ public class GenLangParser extends BaseParser<Node> {
         );
     }
 
-    public Rule Digit() {
+    Rule Digit() {
         return CharRange('0', '9');
     }
 
@@ -386,29 +532,34 @@ public class GenLangParser extends BaseParser<Node> {
                 FirstOf("import",
                         "const", "fun",
                         "new", "return", "this",
-                        "if", "else",
-                        "for", "while",
+                        "if", "then", "else",
+                        "for", "in", "while", "do",
+                        "step",
                         "or", "and", "not", "xor", "nor", "nand"),
                 TestNot(letterOrDigit())
         );
     }
 
-    public final Rule IMPORT = keyword("import");
-    public final Rule CONST = keyword("const");
-    public final Rule FUN = keyword("fun");
-    public final Rule NEW = keyword("new");
-    public final Rule RETURN = keyword("return");
-    public final Rule THIS = keyword("this");
-    public final Rule IF = keyword("if");
-    public final Rule ELSE = keyword("else");
-    public final Rule FOR = keyword("for");
-    public final Rule WHILE = keyword("while");
-    public final Rule OR = keyword("or");
-    public final Rule AND = keyword("and");
-    public final Rule NOT = keyword("not");
-    public final Rule XOR = keyword("xor");
-    public final Rule NOR = keyword("nor");
-    public final Rule NAND = keyword("nand");
+    final Rule IMPORT = keyword("import");
+    final Rule CONST = keyword("const");
+    final Rule FUN = keyword("fun");
+    final Rule NEW = keyword("new");
+    final Rule RETURN = keyword("return");
+    final Rule THIS = keyword("this");
+    final Rule THEN = keyword("then");
+    final Rule IF = keyword("if");
+    final Rule ELSE = keyword("else");
+    final Rule FOR = keyword("for");
+    final Rule IN = keyword("in");
+    final Rule WHILE = keyword("while");
+    final Rule DO = keyword("do");
+    final Rule STEP = keyword("step");
+    final Rule OR = keyword("or");
+    final Rule AND = keyword("and");
+    final Rule NOT = keyword("not");
+    final Rule XOR = keyword("xor");
+    final Rule NOR = keyword("nor");
+    final Rule NAND = keyword("nand");
 
     @SuppressNode
     @DontLabel
@@ -416,6 +567,9 @@ public class GenLangParser extends BaseParser<Node> {
         return Terminal(keyword, letterOrDigit());
     }
 
+    final Rule DOT = Terminal(".", Ch('.'));
+    final Rule DOTDOT = Terminal("..", Ch('.'));
+    final Rule DOTDOTDOT = Terminal("...", Ch('.'));
     final Rule COMMA = Terminal(",");
     final Rule COLON = Terminal(":");
     final Rule SEMI  = Terminal(";");
