@@ -25,6 +25,8 @@ import org.skycastle.flowgine.buildlang.ast.*;
 // Lambda expressions might be nice.
 // annotations can be used for configuring ui elements for parameter entry etc.
 
+// TODO: Disable closure support for now
+
 public class GenLangParser extends BaseParser<Node> {
 
     // Take string as input
@@ -417,16 +419,6 @@ public class GenLangParser extends BaseParser<Node> {
     }
 
     /**
-     * Used for calling a default setter type value for an object.
-     * Translates to a method call object.update(param, value)
-     * Parses:
-     * objectExpression ( expression ) = expression
-     */
-    Rule update() {
-        return null; // TODO
-    }
-
-    /**
      * Parses:
      * [objectExpression . ] functionName ( [expression, *] [argumentName = expression, *] ) [lambdaExpr]
      */
@@ -441,6 +433,16 @@ public class GenLangParser extends BaseParser<Node> {
      * objectExpression ( expression )
      */
     Rule apply() {
+        return null; // TODO
+    }
+
+    /**
+     * Used for calling a default setter type value for an object.
+     * Translates to a method call object.update(param, value)
+     * Parses:
+     * objectExpression ( expression ) = expression
+     */
+    Rule update() {
         return null; // TODO
     }
 
